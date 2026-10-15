@@ -17,7 +17,7 @@
 <p>🏆 랭킹 TOP 10</p>
 <ol id="rank"><li>불러오는 중…</li></ol>
 <script>
-const SIZE = 20, CELLS = 20, SPEED = 120;
+const SIZE = 20, CELLS = 20, SPEED = 80; // 120ms의 1.5배 빠르기
 const ctx = document.getElementById('c').getContext('2d');
 const scoreEl = document.getElementById('score'), msgEl = document.getElementById('msg');
 const DIRS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
@@ -54,7 +54,7 @@ async function saveScore(s) {
 let snake, dir, nextDir, food, score, timer, over = false;
 
 function reset() {
-  snake = [[10, 10], [9, 10], [8, 10]];
+  snake = [[10, 10], [9, 10], [8, 10], [7, 10], [6, 10]];
   dir = nextDir = [1, 0];
   score = 0; scoreEl.textContent = 0;
   placeFood(); draw();
