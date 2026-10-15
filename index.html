@@ -7,17 +7,50 @@
   body { margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1e1e2e; color: #eee; font-family: sans-serif; }
   canvas { background: #11111b; border: 2px solid #444; }
   p { margin: 8px; }
+  #rank { margin: 4px 0 0; padding-left: 28px; min-width: 200px; font-size: 14px; }
 </style>
 </head>
 <body>
 <p>점수: <span id="score">0</span></p>
 <canvas id="c" width="400" height="400"></canvas>
 <p id="msg">방향키(또는 WASD)로 시작</p>
+<p>🏆 랭킹 TOP 10</p>
+<ol id="rank"><li>불러오는 중…</li></ol>
 <script>
 const SIZE = 20, CELLS = 20, SPEED = 120;
 const ctx = document.getElementById('c').getContext('2d');
 const scoreEl = document.getElementById('score'), msgEl = document.getElementById('msg');
 const DIRS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
+// 공개용(anon) 키: 브라우저에 보여도 되며, 권한은 Supabase 보안 규칙(조회·추가만)으로 제한됨
+const SB_URL = 'https://kjlnutuxaobsuazdmyde.supabase.co/rest/v1/scores';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqbG51dHV4YW9ic3VhemRteWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNTExMzcsImV4cCI6MjEwNjcyNzEzN30.T-3AszLoBckyQHyh_TGcXfG_3GjkHpuabVJgC_mvhMg';
+const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
+const rankEl = document.getElementById('rank');
+
+async function loadRank() {
+  try {
+    const res = await fetch(`${SB_URL}?select=name,score&order=score.desc,created_at.asc&limit=10`, { headers: SB_HEADERS });
+    if (!res.ok) throw new Error(res.status);
+    const rows = await res.json();
+    rankEl.replaceChildren(...rows.map(({ name, score }) => {
+      const li = document.createElement('li');
+      li.textContent = `${name} — ${score}점`; // textContent라서 이름에 태그를 넣어도 실행되지 않음
+      return li;
+    }));
+    if (!rows.length) rankEl.innerHTML = '<li>아직 기록이 없어요</li>';
+  } catch { rankEl.innerHTML = '<li>랭킹을 불러오지 못했어요</li>'; }
+}
+
+async function saveScore(s) {
+  // shortcut: 기본 prompt 창 사용, 디자인을 맞추고 싶어지면 입력칸으로 교체
+  const name = prompt(`점수 ${s}점! 랭킹에 올릴 이름 (12자까지, 취소하면 안 올림)`, localStorage.getItem('snakeName') || '')?.trim().slice(0, 12);
+  if (!name) return;
+  try { localStorage.setItem('snakeName', name); } catch {}
+  const res = await fetch(SB_URL, { method: 'POST', headers: SB_HEADERS, body: JSON.stringify({ name, score: s }) });
+  if (!res.ok) msgEl.textContent = '점수 저장에 실패했어요 — 스페이스바로 다시 시작';
+  loadRank();
+}
+
 let snake, dir, nextDir, food, score, timer, over = false;
 
 function reset() {
@@ -40,6 +73,7 @@ function step() {
   if (head[0] < 0 || head[1] < 0 || head[0] >= CELLS || head[1] >= CELLS || body.some(([x, y]) => x === head[0] && y === head[1])) {
     clearInterval(timer); timer = null; over = true;
     msgEl.textContent = `게임 오버! 점수 ${score} — 스페이스바로 다시 시작`;
+    if (score > 0) setTimeout(() => saveScore(score), 50); // 마지막 화면이 그려진 뒤 이름 입력창 띄우기
     return;
   }
   snake = [head, ...body];
@@ -68,6 +102,7 @@ document.addEventListener('keydown', e => {
 });
 
 reset();
+loadRank();
 </script>
 </body>
 </html>
