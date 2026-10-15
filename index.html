@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>뱀 게임</title>
+<style>
+  body { margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1e1e2e; color: #eee; font-family: sans-serif; }
+  canvas { background: #11111b; border: 2px solid #444; }
+  p { margin: 8px; }
+</style>
+</head>
+<body>
+<p>점수: <span id="score">0</span></p>
+<canvas id="c" width="400" height="400"></canvas>
+<p id="msg">방향키(또는 WASD)로 시작</p>
+<script>
+const SIZE = 20, CELLS = 20, SPEED = 120;
+const ctx = document.getElementById('c').getContext('2d');
+const scoreEl = document.getElementById('score'), msgEl = document.getElementById('msg');
+const DIRS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
+let snake, dir, nextDir, food, score, timer, over = false;
+
+function reset() {
+  snake = [[10, 10], [9, 10], [8, 10]];
+  dir = nextDir = [1, 0];
+  score = 0; scoreEl.textContent = 0;
+  placeFood(); draw();
+}
+
+function placeFood() {
+  do food = [Math.floor(Math.random() * CELLS), Math.floor(Math.random() * CELLS)];
+  while (snake.some(([x, y]) => x === food[0] && y === food[1]));
+}
+
+function step() {
+  dir = nextDir;
+  const head = [snake[0][0] + dir[0], snake[0][1] + dir[1]];
+  const ate = head[0] === food[0] && head[1] === food[1];
+  const body = ate ? snake : snake.slice(0, -1); // 꼬리는 이번 칸에서 빠지므로 충돌 대상에서 제외
+  if (head[0] < 0 || head[1] < 0 || head[0] >= CELLS || head[1] >= CELLS || body.some(([x, y]) => x === head[0] && y === head[1])) {
+    clearInterval(timer); timer = null; over = true;
+    msgEl.textContent = `게임 오버! 점수 ${score} — 스페이스바로 다시 시작`;
+    return;
+  }
+  snake = [head, ...body];
+  if (ate) { score++; scoreEl.textContent = score; placeFood(); }
+  draw();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 400, 400);
+  ctx.fillStyle = '#f38ba8';
+  ctx.fillRect(food[0] * SIZE + 2, food[1] * SIZE + 2, SIZE - 4, SIZE - 4);
+  snake.forEach(([x, y], i) => {
+    ctx.fillStyle = i === 0 ? '#a6e3a1' : '#74c7a0';
+    ctx.fillRect(x * SIZE + 1, y * SIZE + 1, SIZE - 2, SIZE - 2);
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' && !timer) { reset(); over = false; msgEl.textContent = ''; timer = setInterval(step, SPEED); e.preventDefault(); return; }
+  const d = DIRS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+  if (!d) return;
+  e.preventDefault();
+  if (d[0] === -dir[0] && d[1] === -dir[1]) return; // 반대 방향으로 바로 꺾기 금지
+  nextDir = d;
+  if (!timer && !over) { msgEl.textContent = ''; timer = setInterval(step, SPEED); }
+});
+
+reset();
+</script>
+</body>
+</html>
